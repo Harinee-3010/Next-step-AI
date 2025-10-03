@@ -1,0 +1,388 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Career Path Navigator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #4f46e5; width: 40px; height: 40px; animation: spin 2s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* ENHANCED UI: Styles for roadmap cards */
+        #roadmap-output .roadmap-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            border: 1px solid #e5e7eb;
+        }
+        #roadmap-output h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 1rem;
+        }
+        #roadmap-output ul { 
+            list-style-type: none;
+            padding-left: 0;
+        }
+        #roadmap-output li { 
+            background-color: #f9fafb;
+            border-left: 4px solid #4f46e5;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.75rem; 
+            color: #4b5563;
+        }
+
+        @media print {
+            body { background: white; }
+            #page-login, #page-input, #page-roadmap-header { display: none; }
+            #page-roadmap { display: block !important; box-shadow: none; border: none; }
+        }
+    </style>
+</head>
+<body class="flex justify-center min-h-screen items-start sm:items-center p-4 sm:p-6 md:py-12">
+    <div class="w-full max-w-7xl mx-auto">
+
+        <div id="page-login" class="p-6 sm:p-8 space-y-8 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl w-full max-w-md mx-auto">
+             <div class="text-center">
+                <h1 id="auth-title" class="text-3xl font-bold text-gray-900">Sign In</h1>
+                <p class="mt-2 text-sm text-gray-600">to your AI Career Path Navigator</p>
+            </div>
+            <form id="auth-form" class="space-y-6">
+                 <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+                    <input type="email" id="email" name="email" placeholder="you@example.com" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                </div>
+                 <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required minlength="6">
+                </div>
+                 <div id="auth-error" class="hidden text-red-500 text-sm text-center"></div>
+                 <button id="auth-button" type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">Sign In</button>
+                 <p class="text-sm text-center text-gray-600">
+                    <span id="auth-prompt-text">Don't have an account?</span>
+                    <a href="#" id="auth-toggle-link" class="font-medium text-indigo-600 hover:text-indigo-500">Sign Up</a>
+                 </p>
+            </form>
+        </div>
+
+
+        <div id="page-input" class="hidden p-6 sm:p-8 space-y-8 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl w-full max-w-2xl mx-auto">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                 <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Next-step AI</h1>
+                 <button id="sign-out-button" class="text-sm font-medium text-indigo-600 hover:text-indigo-500 flex-shrink-0">Sign Out</button>
+            </div>
+            <p class="text-sm text-black-600">"Your LLM's Powered Careerpath Navigator"</p>
+            <p class="text-sm text-gray-600">Enter your details to generate a personalized career roadmap.</p>
+            <form id="career-form" class="space-y-6">
+                <div>
+                    <label for="current-role" class="block text-sm font-medium text-gray-700">Your Current Role</label>
+                    <input type="text" id="current-role" name="current-role" placeholder="e.g., Software Engineer" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                </div>
+                <div>
+                    <label for="experience" class="block text-sm font-medium text-gray-700">Years of Experience</label>
+                    <input type="number" id="experience" name="experience" placeholder="e.g., 5" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                </div>
+                <div>
+                    <label for="skills" class="block text-sm font-medium text-gray-700">Your Skills (min. 10 characters)</label>
+                    <textarea id="skills" name="skills" rows="3" placeholder="e.g., Python, JavaScript, SQL, Project Management" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required minlength="10"></textarea>
+                </div>
+                <div>
+                    <label for="goal" class="block text-sm font-medium text-gray-700">Your Career Goal (min. 15 characters)</label>
+                    <textarea id="goal" name="goal" rows="4" placeholder="e.g., I want to become a Machine Learning Engineer specializing in Natural Language Processing." class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required minlength="15"></textarea>
+                </div>
+                <div id="form-error" class="hidden text-red-500 text-sm text-center"></div>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button id="submit-button" type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">Generate My Career Roadmap</button>
+                    <button id="clear-button" type="button" class="w-full flex justify-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">Clear</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Page 2: Roadmap Output -->
+        <div id="page-roadmap" class="hidden p-6 sm:p-8 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl">
+             <div id="page-roadmap-header" class="flex flex-col sm:flex-row justify-between items-center border-b border-gray-200 pb-4 mb-6 gap-4">
+                 <h2 class="text-xl sm:text-2xl font-bold text-gray-900 text-center sm:text-left">Your Personalized Roadmap</h2>
+                 <div class="flex gap-4 flex-shrink-0">
+                    <button id="download-button" type="button" class="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">Download Report</button>
+                    <button id="start-over-button" type="button" class="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">Start Over</button>
+                 </div>
+            </div>
+            <div id="report-content">
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                    <div class="lg:col-span-3 p-4 bg-white/50 border border-gray-200/80 rounded-lg shadow-md"><canvas id="skillChartRadar"></canvas></div>
+                    <div class="lg:col-span-2 grid grid-rows-2 gap-8">
+                         <div class="p-4 bg-white/50 border border-gray-200/80 rounded-lg shadow-md"><canvas id="skillChartPie"></canvas></div>
+                        <div class="p-4 bg-white/50 border border-gray-200/80 rounded-lg shadow-md"><canvas id="futureScopeChart"></canvas></div>
+                    </div>
+                </div>
+                <div id="roadmap-output" class="mt-8"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        
+        const firebaseConfig = {
+        apiKey: "AIzaSyDavXKiN72deOUUisEDhVwGDC9qfrgj77g",
+        authDomain: "careerpathnavigator-f4fa5.firebaseapp.com",
+        projectId: "careerpathnavigator-f4fa5",
+        storageBucket: "careerpathnavigator-f4fa5.firebasestorage.app",
+        messagingSenderId: "782230825565",
+        appId: "1:782230825565:web:55ad555f8c8e3614237bb4",
+        measurementId: "G-8XTY42FSZJ"
+        };
+        const geminiApiKey = "AIzaSyCn9ka2TXm54gvXg1TjIBm6p3vpiE2l808";
+
+        const { jsPDF } = window.jspdf;
+        const pageLogin = document.getElementById('page-login');
+        const pageInput = document.getElementById('page-input');
+        const pageRoadmap = document.getElementById('page-roadmap');
+        const authForm = document.getElementById('auth-form');
+        const authTitle = document.getElementById('auth-title');
+        const authButton = document.getElementById('auth-button');
+        const authToggleLink = document.getElementById('auth-toggle-link');
+        const authPromptText = document.getElementById('auth-prompt-text');
+        const authError = document.getElementById('auth-error');
+        const signOutButton = document.getElementById('sign-out-button');
+        const careerForm = document.getElementById('career-form');
+        const formError = document.getElementById('form-error');
+        const roadmapOutput = document.getElementById('roadmap-output');
+        const startOverButton = document.getElementById('start-over-button');
+        const clearButton = document.getElementById('clear-button');
+        const submitButton = document.getElementById('submit-button');
+        const downloadButton = document.getElementById('download-button');
+        let isSignUp = false;
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        
+        function showPage(pageId) {
+            pageLogin.classList.toggle('hidden', pageId !== 'page-login');
+            pageInput.classList.toggle('hidden', pageId !== 'page-input');
+            pageRoadmap.classList.toggle('hidden', pageId !== 'page-roadmap');
+        }
+
+        onAuthStateChanged(auth, user => user ? showPage('page-input') : showPage('page-login'));
+
+        authToggleLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            isSignUp = !isSignUp;
+            authTitle.textContent = isSignUp ? 'Sign Up' : 'Sign In';
+            authButton.textContent = isSignUp ? 'Create Account' : 'Sign In';
+            authPromptText.textContent = isSignUp ? 'Already have an account?' : "Don't have an account?";
+            authToggleLink.textContent = isSignUp ? 'Sign In' : 'Sign Up';
+            authError.classList.add('hidden');
+            authForm.reset();
+        });
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = authForm.email.value;
+            const password = authForm.password.value;
+            authError.classList.add('hidden');
+            try {
+                if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
+                else await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                authError.textContent = error.message;
+                authError.classList.remove('hidden');
+            }
+        });
+
+        signOutButton.addEventListener('click', () => signOut(auth));
+
+        let skillChartRadarInstance, futureScopeChartInstance, skillChartPieInstance;
+        function destroyCharts() {
+            if (skillChartRadarInstance) skillChartRadarInstance.destroy();
+            if (futureScopeChartInstance) futureScopeChartInstance.destroy();
+            if (skillChartPieInstance) skillChartPieInstance.destroy();
+        }
+        clearButton.addEventListener('click', () => { careerForm.reset(); formError.classList.add('hidden'); });
+        startOverButton.addEventListener('click', () => { careerForm.reset(); roadmapOutput.innerHTML = ''; destroyCharts(); showPage('page-input'); });
+
+        careerForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            formError.classList.add('hidden');
+            if (!careerForm.checkValidity()) {
+                formError.textContent = 'Please fill out all fields with valid information.';
+                formError.classList.remove('hidden');
+                return;
+            }
+            showPage('page-roadmap');
+            submitButton.disabled = true;
+            roadmapOutput.innerHTML = `<div class="flex flex-col items-center justify-center pt-10"><div class="loader"></div><p class="mt-4 text-gray-600">Generating roadmap...</p></div>`;
+            destroyCharts();
+            
+         
+            const userPrompt = `
+                Given the following user profile:
+                - Current Role: ${document.getElementById('current-role').value}
+                - Experience: ${document.getElementById('experience').value} years
+                - Current Skills: ${document.getElementById('skills').value}
+                - Career Goal: ${document.getElementById('goal').value}
+
+                Generate a comprehensive, step-by-step career roadmap. The roadmap must be broken down into at least four distinct, chronological stages with meaningful titles (e.g., "Months 1-3: Building the Foundation"). Do NOT use generic titles like "Phase 1".
+
+                For each stage, provide detailed, actionable advice covering these points. Each point MUST have substantive, detailed content and should not be empty:
+                1.  **Key Learning Objectives:** What specific concepts and technologies should they master?
+                2.  **Practical Projects:** Suggest a hands-on project to build and apply the skills learned in that stage.
+                3.  **Resources:** Recommend 1-2 high-quality online courses, books, or documentation.
+
+                The response MUST be formatted as clean HTML. Use <h3> for stage titles and <ul> with nested <li> for the advice within each stage. Use <strong> tags for emphasis on key terms. The content should be detailed and thorough.
+
+                IMPORTANT: Also include these four machine-readable HTML comments for data extraction:
+                <!-- SKILLS_EXISTING: Skill A, Skill B -->
+                <!-- SKILLS_TO_ACQUIRE: Skill C, Skill D -->
+                <!-- SKILL_CATEGORIES: Technical:2, Soft Skills:3 -->
+                <!-- FUTURE_SCOPE: Year 1:80000, Year 3:120000, Year 5:180000 -->`;
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`;
+                const payload = { contents: [{ parts: [{ text: userPrompt }] }] };
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API request failed: ${(await response.json()).error.message}`);
+                const result = await response.json();
+                const roadmapHtml = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!roadmapHtml) throw new Error("No valid content received from API.");
+
+                roadmapOutput.innerHTML = roadmapHtml;
+                styleRoadmapContent();
+                
+                const existingSkillsMatch = roadmapHtml.match(/<!-- SKILLS_EXISTING: (.*?) -->/);
+                const skillsToAcquireMatch = roadmapHtml.match(/<!-- SKILLS_TO_ACQUIRE: (.*?) -->/);
+                const futureScopeMatch = roadmapHtml.match(/<!-- FUTURE_SCOPE: (.*?) -->/);
+                const skillCategoriesMatch = roadmapHtml.match(/<!-- SKILL_CATEGORIES: (.*?) -->/);
+
+                if (existingSkillsMatch && skillsToAcquireMatch) renderSkillRadarChart(existingSkillsMatch[1], skillsToAcquireMatch[1]);
+                if (futureScopeMatch) renderFutureScopeChart(futureScopeMatch[1]);
+                if (skillCategoriesMatch) renderSkillPieChart(skillCategoriesMatch[1]);
+
+            } catch (error) {
+                console.error("Error:", error);
+                roadmapOutput.innerHTML = `<div class="text-center"><p class="text-red-500">Error generating roadmap. ${error.message}</p></div>`;
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+        
+
+        function styleRoadmapContent() {
+            const container = roadmapOutput;
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = container.innerHTML;
+
+            const children = Array.from(tempDiv.children);
+            container.innerHTML = ''; // Clear for rebuilding
+
+            let currentCard = null;
+
+            children.forEach(child => {
+                if (child.tagName === 'H3') {
+                    if (currentCard) container.appendChild(currentCard);
+                    currentCard = document.createElement('div');
+                    currentCard.className = 'roadmap-card';
+                    currentCard.appendChild(child);
+                } else if (child.tagName === 'UL' && currentCard) {
+                    currentCard.appendChild(child);
+                }
+            });
+
+            if (currentCard) container.appendChild(currentCard);
+        }
+        
+        downloadButton.addEventListener('click', async () => {
+            const content = document.getElementById('report-content');
+            const button = document.getElementById('download-button');
+            const originalText = button.textContent;
+            
+            button.textContent = 'Generating...';
+            button.disabled = true;
+            content.classList.add('bg-white');
+
+            try {
+                const canvas = await html2canvas(content, { 
+                    scale: 2, 
+                    logging: false, 
+                    useCORS: true,
+                    windowWidth: content.scrollWidth,
+                    windowHeight: content.scrollHeight
+                });
+                
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height]
+                });
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                pdf.save('Career-Roadmap-Report.pdf');
+
+            } catch (error) {
+                console.error("Failed to generate PDF:", error);
+                alert("Sorry, there was an error creating the PDF report.");
+            } finally {
+                content.classList.remove('bg-white');
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        });
+
+        function renderSkillRadarChart(existingStr, toAcquireStr) {
+            const existing = existingStr.split(',').map(s => s.trim());
+            const toAcquire = toAcquireStr.split(',').map(s => s.trim());
+            const ctx = document.getElementById('skillChartRadar').getContext('2d');
+            const allSkills = [...new Set([...existing, ...toAcquire])];
+            const data = {
+                labels: allSkills,
+                datasets: [
+                    { label: 'Current Skills', data: allSkills.map(s => existing.includes(s) ? 10 : 0), backgroundColor: 'rgba(79, 70, 229, 0.2)', borderColor: 'rgba(79, 70, 229, 1)', borderWidth: 2 },
+                    { label: 'Skills to Develop', data: allSkills.map(s => toAcquire.includes(s) ? 5 : 0), backgroundColor: 'rgba(219, 39, 119, 0.2)', borderColor: 'rgba(219, 39, 119, 1)', borderWidth: 2 }
+                ]
+            };
+            skillChartRadarInstance = new Chart(ctx, { type: 'radar', data, options: { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { title: { display: true, text: 'Skills Profile' } },
+                scales: { r: { pointLabels: { font: { size: 13 } }, grid: { circular: true } } }
+            } });
+        }
+        function renderFutureScopeChart(scopeData) {
+            const ctx = document.getElementById('futureScopeChart').getContext('2d');
+            const points = scopeData.split(',').map(p => p.trim().split(':'));
+            const data = {
+                labels: points.map(p => p[0]),
+                datasets: [{ label: 'Projected Growth (e.g., Salary)', data: points.map(p => p[1]), fill: true, borderColor: 'rgb(75, 192, 192)', backgroundColor: 'rgba(75, 192, 192, 0.2)', tension: 0.1 }]
+            };
+            futureScopeChartInstance = new Chart(ctx, { type: 'line', data, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, title: { display: true, text: 'Future Career Scope' } } } });
+        }
+        function renderSkillPieChart(categoryData) {
+            const ctx = document.getElementById('skillChartPie').getContext('2d');
+            const categories = categoryData.split(',').map(c => c.trim().split(':'));
+            const data = {
+                labels: categories.map(c => c[0]),
+                datasets: [{ label: 'Skill Categories', data: categories.map(c => c[1]), backgroundColor: ['rgba(54, 162, 235, 0.7)', 'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)', 'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)'] }]
+            };
+            skillChartPieInstance = new Chart(ctx, { type: 'pie', data, options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Needed Skill Categories' } } } });
+        }
+    </script>
+</body>
+</html>
+
