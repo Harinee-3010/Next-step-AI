@@ -1,7 +1,5 @@
 # Next-step-AI 
 
-(Project-link: https://harinee-3010.github.io/Next-step-AI/)
-
 🎯 The Problem
 
 Choosing a career path is one of life's most significant decisions, yet it's often fraught with uncertainty. The job market is constantly evolving, new roles emerge, and required skills change rapidly. Aspiring 
